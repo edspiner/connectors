@@ -100,3 +100,36 @@ def test_connector_is_instantiated(mock_opencti_connector_helper):
 
     assert connector.config == settings
     assert connector.helper == helper
+
+
+def test_process_message_handles_no_information_for_ip_as_info():
+    connector = ShodanConnector.__new__(ShodanConnector)
+    connector.helper = MagicMock()
+    connector._process_message = MagicMock(
+        side_effect=ValueError("Shodan API Error : No information available for that IP")
+    )
+
+    data = {"stix_objects": []}
+
+    result = connector.process_message(data)
+
+    assert result == "Shodan API Error : No information available for that IP"
+    connector.helper.log_info.assert_called_once_with(
+        "Shodan API Error : No information available for that IP"
+    )
+    connector.helper.send_stix2_bundle.assert_not_called()
+
+
+def test_process_message_skips_indicator_with_non_shodan_pattern_type():
+    connector = ShodanConnector.__new__(ShodanConnector)
+    connector._extract_and_check_markings = MagicMock()
+
+    data = {
+        "stix_objects": [],
+        "stix_entity": {"type": "indicator", "pattern_type": "stix"},
+        "enrichment_entity": {"objectMarking": []},
+    }
+
+    result = connector._process_message(data)
+
+    assert result == "Skipping indicator with unsupported pattern_type: stix"

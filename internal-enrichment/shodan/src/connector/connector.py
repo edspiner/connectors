@@ -31,6 +31,7 @@ FACET_TITLES = {
     "asn": "Top 20 Autonomous Systems",
     "country": "Top 20 Countries",
 }
+NO_INFORMATION_FOR_IP_MESSAGE = "No information available for that IP"
 
 
 class ShodanConnector:
@@ -62,6 +63,10 @@ class ShodanConnector:
                 "Do not send any data, TLP of the observable is greater than MAX TLP"
             )
         return tlp
+
+    @staticmethod
+    def _is_no_information_for_ip_error(error: Exception) -> bool:
+        return NO_INFORMATION_FOR_IP_MESSAGE.lower() in str(error).lower()
 
     def _generate_stix_relationship(
         self, source_ref, stix_core_relationship_type, target_ref
@@ -508,13 +513,28 @@ class ShodanConnector:
                 raise ValueError(f"Shodan API Error : {e}") from e
 
         elif stix_entity["type"] == "indicator":
-            raise ValueError(f"Unsupported pattern type: {stix_entity['pattern_type']}")
+            return (
+                f"Skipping indicator with unsupported pattern_type: "
+                f"{stix_entity['pattern_type']}"
+            )
         else:
             raise ValueError(f"Unsupported type: {stix_entity['type']}")
 
     def process_message(self, data: Dict) -> str:
         try:
-            self._process_message(data)
+            return self._process_message(data)
+        except ValueError as e:
+            if self._is_no_information_for_ip_error(e):
+                self.helper.log_info(str(e))
+                return str(e)
+            self.helper.connector_logger.error(
+                "[CONNECTOR] An unexpected Error occurred", {"error_message": str(e)}
+            )
+            # If an error occurs, we send the original stix objects back
+            self.helper.send_stix2_bundle(
+                self.helper.stix2_create_bundle(data["stix_objects"])
+            )
+            raise e
         except Exception as e:
             self.helper.connector_logger.error(
                 "[CONNECTOR] An unexpected Error occurred", {"error_message": str(e)}
