@@ -16,12 +16,14 @@ from connectors_sdk.settings.base_settings import (
     BaseStreamConnectorConfig,
 )
 from connectors_sdk.settings.deprecations import (
+    Deprecate,
     DeprecatedField,
 )
 from connectors_sdk.settings.exceptions import (
     ConfigError,
     ConfigValidationError,
 )
+from connectors_sdk.states.states import ExternalImportConnectorState
 
 __all__ = [
     # Base Settings
@@ -40,5 +42,8 @@ __all__ = [
     "DatetimeFromIsoString",
     "ListFromString",
     # Deprecations
+    "Deprecate",
     "DeprecatedField",
+    # Connector States
+    "ExternalImportConnectorState",
 ]
