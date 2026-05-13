@@ -432,6 +432,12 @@ class RansomwareAPIConnector:
         for item in response_json:
             discovered_raw = item.get("discovered")
             created = safe_datetime(discovered_raw)
+            if created is None:
+                self.helper.connector_logger.warning(
+                    "Skipping victim with invalid discovered date",
+                    {"victim": item.get("victim"), "discovered": discovered_raw},
+                )
+                continue
             if created.tzinfo is None:
                 created = created.replace(tzinfo=timezone.utc)
 
